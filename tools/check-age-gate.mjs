@@ -14,22 +14,25 @@ const ENTER_HINT = /(enter site|confirm (your )?age|i am (18|21|over)|i'?m (18|2
 const BOT_WALL = /(verify you are human|press ?& ?hold|cf-challenge|px-captcha|just a moment|are you a robot|access denied)/i;
 
 // A control that only exists because someone is asking for a birth date.
-const DOB_FIELD_PROBE = `() => {
+// Passed as real functions (not strings): page.evaluate only invokes a passed
+// function reference — a block-bodied arrow function in a string evaluates to
+// the function object, which serializes to undefined.
+const DOB_FIELD_PROBE = () => {
   const hits = [];
   const els = document.querySelectorAll('input, select, [role="combobox"], [role="spinbutton"]');
   for (const el of els) {
     const text = [el.getAttribute('name'), el.getAttribute('id'), el.getAttribute('placeholder'),
       el.getAttribute('aria-label'), el.getAttribute('autocomplete'), el.textContent]
       .filter(Boolean).join(' ');
-    if (/\\b(dob|birth|born)\\b/i.test(text) || (el.tagName === 'SELECT' && /(month|day|year)/i.test(text))) {
-      hits.push({ tag: el.tagName.toLowerCase, type: el.getAttribute('type'), name: el.getAttribute('name'),
+    if (/\b(dob|birth|born)\b/i.test(text) || (el.tagName === 'SELECT' && /(month|day|year)/i.test(text))) {
+      hits.push({ tag: el.tagName.toLowerCase(), type: el.getAttribute('type'), name: el.getAttribute('name'),
         id: el.getAttribute('id'), placeholder: el.getAttribute('placeholder') });
     }
   }
   return hits;
-}`;
+};
 
-const TEXT_PROBE = `() => {
+const TEXT_PROBE = () => {
   const body = document.body ? document.body.innerText.slice(0, 4000) : '';
   const modal = document.querySelector('[role="dialog"], [aria-modal="true"], .modal, [class*="modal" i], [class*="gateway" i]');
   return {
@@ -39,7 +42,7 @@ const TEXT_PROBE = `() => {
       .map((b) => (b.innerText || b.getAttribute('aria-label') || '').trim()).filter(Boolean).slice(0, 40),
     title: document.title,
   };
-}`;
+};
 
 async function loadPlaywright() {
   for (const name of ['playwright', 'playwright-core']) {
@@ -108,9 +111,13 @@ export async function checkAgeGate({
     };
   }
 
+  let browser = null;
   const context = userDataDir
     ? await pw.chromium.launchPersistentContext(userDataDir, { headless: !headed })
-    : await pw.chromium.launch({ headless: !headed }).then((browser) => browser.newContext());
+    : await (async () => {
+        browser = await pw.chromium.launch({ headless: !headed });
+        return browser.newContext();
+      })();
 
   if (storageState && !userDataDir) {
     // Only meaningful on a throwaway context; a persistent profile keeps its own state.
@@ -189,6 +196,9 @@ export async function checkAgeGate({
     };
   } finally {
     await context.close();
+    // Closing the context is not enough on the launch() path — the browser
+    // process itself keeps the event loop alive forever without this.
+    if (browser) await browser.close();
   }
 }
 
