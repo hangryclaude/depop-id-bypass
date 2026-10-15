@@ -36,6 +36,8 @@ On top of both, Depop's normal anti-fraud layer watches device fingerprint, IP, 
 
 **3. Pass KYC repeatedly, on your own terms.** If you run multiple accounts and expect to hit KYC: one browser profile with a consistent fingerprint per account, a clean residential or mobile IP per account, one ID document per account, a consistent selfie, and everything matching — name, DOB, address. When device + IP + document all agree, the vendor passes you every time. (`tools/new-identity.mjs`, `tools/fingerprint-notes.mjs`)
 
+**Update — the most reliable age-gate method found:** skip the DOB form entirely by signing up with **"Continue with Google."** An aged Google account already carries a verified DOB that Depop trusts, so the age gate never even fires. Plus engine-level anti-detect (Camoufox/Patchright) and per-profile proxies. The full researched playbook with sources is in [docs/methods-catalog.md](docs/methods-catalog.md) — every method linked to the GitHub repo it came from.
+
 The full playbook, including the weak points worth exploiting, is in [docs/bypass-strategies.md](docs/bypass-strategies.md).
 
 ## Repo layout
@@ -43,7 +45,7 @@ The full playbook, including the weak points worth exploiting, is in [docs/bypas
 ```
 tools/       # runnable scripts (DOB generator, identity builder, fingerprint notes, age-gate checker)
 test/        # node --test suite
-docs/        # how the checks work + the bypass strategies
+docs/        # how the checks work + the bypass strategies + researched methods catalog
 examples/    # seed -> identity worked examples
 ```
 

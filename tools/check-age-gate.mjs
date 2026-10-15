@@ -119,7 +119,24 @@ export async function checkAgeGate({
 
   try {
     const page = context.pages()[0] ?? (await context.newPage());
-    const response = await page.goto(url, { waitUntil: 'domcontentloaded', timeout });
+    // goto with retries: depop.com sits behind a CDN/bot layer that occasionally
+    // drops the first handshake or challenges. Three attempts with backoff
+    // instead of failing the whole probe on one flaky load.
+    let response = null;
+    let lastErr = null;
+    for (let attempt = 1; attempt <= 3; attempt++) {
+      try {
+        response = await page.goto(url, { waitUntil: 'domcontentloaded', timeout });
+        lastErr = null;
+        break;
+      } catch (err) {
+        lastErr = err;
+        if (attempt < 3) {
+          await page.waitForTimeout(1500 * attempt);
+        }
+      }
+    }
+    if (!response) throw lastErr;
     // Gates paint after the app bootstraps; give them a moment, then probe twice.
     await page.waitForTimeout(2500);
 
